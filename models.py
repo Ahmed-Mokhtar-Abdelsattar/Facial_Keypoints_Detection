@@ -1,7 +1,6 @@
 ## Defining the convolutional neural network architecture
 
 import torch
-#from torch.autograd import Variable # from abojja9 (GitHub)
 import torch.nn as nn
 import torch.nn.functional as F
 # can use the below import should you choose to initialize the weights of your Net
@@ -13,7 +12,7 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         
-        ## TODO: Define all the layers of this CNN, the only requirements are:
+        ## Define all the layers of this CNN, the only requirements are:
         ## 1. This network takes in a square (same width and height), grayscale image as input
         ## 2. It ends with a linear layer that represents the keypoints
         ## it's suggested that you make this last layer output 136 values, 2 for each of the 68 keypoint (x, y) pairs
@@ -24,23 +23,50 @@ class Net(nn.Module):
         
         ## Note that among the layers to add, consider including:
         # maxpooling layers, multiple conv layers, fully-connected layers, and other layers (such as dropout or batch normalization) to avoid overfitting
-        ####################################################### AMA #######################################################
         
-         # Covolutional Layers
+        ## Shape of a Convolutional Layer
+        # K - out_channels : the number of filters in the convolutional layer
+        # F - kernel_size
+        # S - the stride of the convolution
+        # P - the padding
+        # W - the width/height (square) of the previous layer
+        
+        # Since there are F*F*D weights per filter
+        # The total number of weights in the convolutional layer is K*F*F*D
+        
+        # 224 by 224 pixels
+        
+        ## self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0)
+        # output size = (W-F)/S +1 = (224-5)/1 +1 = 220
+        # the output Tensor for one image, will have the dimensions: (1, 220, 220)
+        # after one pool layer, this becomes (10, 13, 13)
         self.conv1 = nn.Conv2d(1, 32, 5)
-        self.conv2 = nn.Conv2d(32, 64, 3)
-        self.conv3 = nn.Conv2d(64, 128, 3)
-        self.conv4 = nn.Conv2d(128, 256, 3)
-        self.conv5 = nn.Conv2d(256, 512, 1)
-
-        # Maxpooling Layer
+        
+        # maxpool layer
+        # pool with kernel_size=2, stride=2
         self.pool = nn.MaxPool2d(2, 2)
-
-        # Fully Connected Layers
-        #self.fc1 = nn.Linear(in_features = 512*6*6, out_features = 1024) # The number of input gained by "print("Flatten size: ", x.shape)" in below
-        #self.fc2 = nn.Linear(in_features = 1024,    out_features = 512)
-        #self.fc3 = nn.Linear(in_features = 512,    out_features = 136) # the output 136 in order to having 2 for each of the 68 keypoint (x, y) pairs
-
+        
+        # 220/2 = 110
+        # output size = (W-F)/S +1 = (110-3)/1 + 1 = 108
+        # the output Tensor for one image, will have the dimensions: (32, 110, 110)
+        self.conv2 = nn.Conv2d(32, 64, 3)
+        
+        # output size = (W-F)/S +1 = (54-3)/1 + 1 = 52
+        # the output Tensor for one image, will have the dimensions: (64, 54, 54)
+        self.conv3 = nn.Conv2d(64, 128, 3)
+        
+        # output size = (W-F)/S +1 = (26-3)/1 + 1 = 24
+        # the output Tensor for one image, will have the dimensions: (128, 26, 26)
+        self.conv4 = nn.Conv2d(128, 256, 3)
+        
+        # output size = (W-F)/S +1 = (12-3)/1 + 1 = 10
+        # the output Tensor for one image, will have the dimensions: (256, 12, 12)
+        self.conv5 = nn.Conv2d(256, 512, 1)
+        
+        # output size = (W-F)/S +1 = (6-1)/1 + 1 = 6
+        # the output Tensor for one image, will have the dimensions: (512, 6, 6)
+        
+        # Fully-connected (linear) layers
         self.fc1 = nn.Linear(512*6*6, 1024)
         self.fc2 = nn.Linear(1024, 512)
         self.fc3 = nn.Linear(512, 68*2)
@@ -50,27 +76,23 @@ class Net(nn.Module):
 
         
     def forward(self, x):
-        ## TODO: Define the feedforward behavior of this model
+        ## Define the feedforward behavior of this model
         ## x is the input image and, as an example, here you may choose to include a pool/conv step:
         ## x = self.pool(F.relu(self.conv1(x)))
         
-        
         # a modified x, having gone through all the layers of your model, should be returned
         
-        ####################################################### AMA #######################################################
-
-        
+        # 5 conv/relu + pool layers
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
         x = self.pool(F.relu(self.conv3(x)))
         x = self.pool(F.relu(self.conv4(x)))
         x = self.pool(F.relu(self.conv5(x)))
-
-        # Flattening the layer
+        
+        # Prep for linear layer / Flatten
         x = x.view(x.size(0), -1)
-        #print("Flatten size: ", x.shape)
-
-             # linear layers with dropout in between
+        
+        # linear layers with dropout in between
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         x = F.relu(self.fc2(x))
